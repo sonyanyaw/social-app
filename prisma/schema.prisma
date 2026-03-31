@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String    @id @default(uuid())
+  clerkId        String    @unique
+  email          String    @unique
+  username       String    @unique
+  displayName    String
+  avatarUrl      String?
+  bio            String?
+  createdAt      DateTime  @default(now())
+  lastActiveAt   DateTime  @default(now())
+
+  posts          Post[]
+  comments       Comment[]
+  likes          Like[]
+  mediaFiles     MediaFile[]
+  sentMessages   Message[]
+  followers      Follow[]  @relation("following")
+  following      Follow[]  @relation("follower")
+  conversations  ConversationParticipant[]
+
+  @@index([username])
+  @@index([displayName])
+  @@index([clerkId])
+}
+
+model Follow {
+  followerId   String
+  followingId  String
+  createdAt    DateTime @default(now())
+
+  follower     User @relation("follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  following    User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Post {
+  id           String      @id @default(uuid())
+  userId       String
+  content      String
+  visibility   Visibility  @default(PUBLIC)
+  likeCount    Int         @default(0)
+  commentCount Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments     Comment[]
+  likes        Like[]
+  mediaFiles   MediaFile[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum Visibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
+
+model Like {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model MediaFile {
+  id          String   @id @default(uuid())
+  userId      String
+  postId      String?
+  storageKey  String   @unique
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([postId])
+}
+
+model Conversation {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  userId         String
+  conversationId String
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conversationId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  isRead         Boolean      @default(false)
+  sentAt         DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt(sort: Desc)])
+  @@index([senderId])
+}
