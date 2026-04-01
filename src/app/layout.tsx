@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { ClerkProvider } from "@clerk/nextjs"
 import { DM_Sans, DM_Serif_Display } from "next/font/google"
+import { ToastProvider } from "@/components/ToastProvider"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -29,7 +30,9 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`}>
         <body>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </body>
       </html>
     </ClerkProvider>
