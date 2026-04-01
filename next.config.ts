@@ -1,7 +1,21 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // Allow ngrok domains for local dev tunneling
+  allowedDevOrigins: [
+    "*.ngrok-free.app",
+    "*.ngrok.io",
+    "*.ngrok-free.dev",
+  ],
 
-export default nextConfig;
+  images: {
+    remotePatterns: [
+      // Clerk avatars
+      { protocol: "https", hostname: "img.clerk.com" },
+      // Supabase storage
+      { protocol: "https", hostname: "*.supabase.co" },
+    ],
+  },
+}
+
+export default nextConfig
