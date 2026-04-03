@@ -1,0 +1,156 @@
+import { auth } from "@clerk/nextjs/server"
+import { notFound } from "next/navigation"
+import { db } from "@/lib/db"
+import { Header } from "@/components/Header"
+import { PostCard } from "@/components/post/PostCard"
+import { FollowButton } from "@/components/profile/FollowButton"
+
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ username: string }>
+}) {
+  const { username } = await params
+  const { userId: clerkId } = await auth()
+
+  const [me, target] = await Promise.all([
+    clerkId ? db.user.findUnique({ where: { clerkId } }) : null,
+    db.user.findUnique({
+      where: { username },
+      include: {
+        _count: { select: { posts: true, followers: true, following: true } },
+      },
+    }),
+  ])
+
+  if (!target) notFound()
+
+  const isMe = me?.id === target.id
+
+  const isFollowing = me && !isMe
+    ? !!(await db.follow.findUnique({
+        where: { followerId_followingId: { followerId: me.id, followingId: target.id } },
+      }))
+    : false
+
+  // Show posts based on relationship
+  const posts = await db.post.findMany({
+    where: {
+      userId: target.id,
+      OR: [
+        { visibility: "PUBLIC" },
+        // Own profile: see all your posts
+        ...(isMe ? [{ userId: target.id }] : []),
+        // Following: see followers-only posts
+        ...(isFollowing ? [{ visibility: "FOLLOWERS" as const }] : []),
+      ],
+    },
+    include: { user: true, mediaFiles: true },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  })
+
+  const initials = target.displayName
+    .split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+
+  return (
+    <>
+      <Header />
+      <div className="page-scroll">
+        <main style={{ maxWidth: 640, margin: "0 auto", padding: "32px 20px 80px" }}>
+
+          {/* Profile header */}
+          <div className="fade-up" style={{
+            display: "flex", alignItems: "flex-start", gap: 20,
+            marginBottom: 32, paddingBottom: 28,
+            borderBottom: "1px solid var(--rule)",
+          }}>
+            {/* Avatar */}
+            <div style={{
+              width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
+              background: "var(--accent-soft)", border: "1px solid var(--rule)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 22, fontWeight: 500, color: "var(--accent)", overflow: "hidden",
+            }}>
+              {target.avatarUrl
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={target.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : initials}
+            </div>
+
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                <div>
+                  <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 24, fontWeight: 400, color: "var(--ink)", margin: 0 }}>
+                    {target.displayName}
+                  </h1>
+                  <p style={{ fontSize: 14, color: "var(--ink-3)", margin: "2px 0 0" }}>
+                    @{target.username}
+                  </p>
+                </div>
+                {!isMe && me && (
+                  <FollowButton
+                    username={target.username}
+                    initialFollowing={isFollowing}
+                  />
+                )}
+                {isMe && (
+                  <a href="/profile/edit" style={{
+                    fontSize: 13, padding: "7px 16px",
+                    borderRadius: 999, border: "1px solid var(--rule)",
+                    color: "var(--ink-2)", textDecoration: "none",
+                    background: "transparent", display: "inline-block",
+                    transition: "border-color 0.15s",
+                  }}>
+                    Edit profile
+                  </a>
+                )}
+              </div>
+
+              {target.bio && (
+                <p style={{ fontSize: 14, color: "var(--ink-2)", lineHeight: 1.6, margin: "10px 0 0" }}>
+                  {target.bio}
+                </p>
+              )}
+
+              {/* Stats */}
+              <div style={{ display: "flex", gap: 20, marginTop: 14 }}>
+                {[
+                  { label: "posts",     value: target._count.posts },
+                  { label: "followers", value: target._count.followers },
+                  { label: "following", value: target._count.following },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <span style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>{value}</span>
+                    <span style={{ fontSize: 13, color: "var(--ink-3)", marginLeft: 4 }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Posts */}
+          {posts.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 0", color: "var(--ink-3)" }}>
+              <p style={{ fontFamily: "var(--font-serif)", fontSize: 20, marginBottom: 6 }}>
+                {isMe ? "You haven't posted yet" : "No posts yet"}
+              </p>
+              <p style={{ fontSize: 14 }}>
+                {isMe ? "Share something with your followers." : `${target.displayName} hasn't posted anything.`}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {posts.map((post, i) => (
+                <div key={post.id} className="fade-up" style={{ animationDelay: `${i * 30}ms` }}>
+                  <PostCard post={post} />
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    </>
+  )
+}

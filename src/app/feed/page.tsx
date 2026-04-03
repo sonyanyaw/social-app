@@ -5,10 +5,28 @@ import { PostComposer } from "@/components/post/PostComposer"
 import { PostCard } from "@/components/post/PostCard"
 
 export default async function FeedPage() {
-  await auth.protect()
+  const { userId: clerkId } = await auth.protect()
+
+  const dbUser = clerkId
+    ? await db.user.findUnique({ where: { clerkId } })
+    : null
 
   const posts = await db.post.findMany({
-    where: { visibility: "PUBLIC" },
+    where: {
+      OR: [
+        // Public posts from everyone
+        { visibility: "PUBLIC" },
+        // Your own posts at any visibility (PUBLIC, FOLLOWERS, PRIVATE)
+        ...(dbUser ? [{ userId: dbUser.id }] : []),
+        // Followers-only posts from people you follow
+        ...(dbUser ? [{
+          visibility: "FOLLOWERS" as const,
+          user: {
+            followers: { some: { followerId: dbUser.id } },
+          },
+        }] : []),
+      ],
+    },
     include: { user: true, mediaFiles: true },
     orderBy: { createdAt: "desc" },
     take: 30,
@@ -23,9 +41,7 @@ export default async function FeedPage() {
             <PostComposer />
           </div>
 
-          <div style={{
-            display: "flex", alignItems: "center", gap: 12, marginBottom: 24,
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
             <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
             <span style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
               Latest

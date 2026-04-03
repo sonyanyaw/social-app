@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import Link from "next/link"
 import type { Post, User, MediaFile } from "@prisma/client"
 
 type PostWithRelations = Post & {
@@ -25,6 +26,7 @@ function timeAgo(date: Date | string) {
 
 export function PostCard({ post }: { post: PostWithRelations }) {
   const [liked, setLiked] = useState(false)
+  // Start from DB value — no double counting
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [commentCount, setCommentCount] = useState(post.commentCount)
   const [showComments, setShowComments] = useState(false)
@@ -38,6 +40,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
     .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
 
   async function toggleLike() {
+    // Optimistic update
     const wasLiked = liked
     setLiked(!wasLiked)
     setLikeCount((c) => wasLiked ? c - 1 : c + 1)
@@ -46,10 +49,10 @@ export function PostCard({ post }: { post: PostWithRelations }) {
       const res = await fetch(`/api/posts/${post.id}/like`, { method: "POST" })
       if (!res.ok) throw new Error()
       const data = await res.json()
-
+      // Sync with server response in case of race
       setLiked(data.liked)
     } catch {
-
+      // Revert on error
       setLiked(wasLiked)
       setLikeCount((c) => wasLiked ? c + 1 : c - 1)
     }
@@ -105,17 +108,21 @@ export function PostCard({ post }: { post: PostWithRelations }) {
           flexShrink: 0, fontSize: 12, fontWeight: 500, color: "var(--accent)",
           overflow: "hidden",
         }}>
-          {post.user.avatarUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={post.user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : initials}
+          <Link href={`/profile/${post.user.username}`} style={{ display: "contents" }}>
+            {post.user.avatarUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={post.user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : initials}
+          </Link>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>
-              {post.user.displayName}
-            </span>
-            <span style={{ fontSize: 12, color: "var(--ink-3)" }}>@{post.user.username}</span>
+            <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{post.user.displayName}</span>
+            </Link>
+            <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>@{post.user.username}</span>
+            </Link>
             <span suppressHydrationWarning style={{ fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>
               {timeAgo(post.createdAt)}
             </span>
