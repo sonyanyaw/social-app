@@ -2,11 +2,15 @@
 
 import { useState, useRef } from "react"
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
+import { Avatar } from "@/components/Avatar"
+import { PostMedia } from "@/components/PostMedia"
 import type { Post, User, MediaFile } from "@prisma/client"
 
 type PostWithRelations = Post & {
   user: User
   mediaFiles: MediaFile[]
+  isLiked?: boolean
 }
 
 type Comment = {
@@ -24,8 +28,13 @@ function timeAgo(date: Date | string) {
   return `${Math.floor(s / 86400)}d`
 }
 
-export function PostCard({ post }: { post: PostWithRelations }) {
-  const [liked, setLiked] = useState(false)
+export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete?: (id: string) => void }) {
+  const { user } = useUser()
+  const isOwner = user?.id !== undefined && post.user.clerkId === user.id
+  const [deleted, setDeleted] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [liked, setLiked] = useState(post.isLiked ?? false)
   // Start from DB value — no double counting
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [commentCount, setCommentCount] = useState(post.commentCount)
@@ -97,24 +106,28 @@ export function PostCard({ post }: { post: PostWithRelations }) {
     finally { setSubmitting(false) }
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
+      setDeleted(true)
+      onDelete?.(post.id)
+    } catch {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
+  if (deleted) return null
+
   return (
     <article style={{ padding: "20px 0", borderBottom: "1px solid var(--rule)" }}>
       {/* Author row */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%",
-          background: "var(--accent-soft)", border: "1px solid var(--rule)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, fontSize: 12, fontWeight: 500, color: "var(--accent)",
-          overflow: "hidden",
-        }}>
-          <Link href={`/profile/${post.user.username}`} style={{ display: "contents" }}>
-            {post.user.avatarUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={post.user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : initials}
-          </Link>
-        </div>
+        <Link href={`/profile/${post.user.username}`} style={{ display: "contents" }}>
+          <Avatar src={post.user.avatarUrl} alt={post.user.displayName} size={36} initials={initials} />
+        </Link>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
@@ -126,6 +139,54 @@ export function PostCard({ post }: { post: PostWithRelations }) {
             <span suppressHydrationWarning style={{ fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>
               {timeAgo(post.createdAt)}
             </span>
+            {isOwner && (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    title="Delete post"
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: "2px 4px", borderRadius: "var(--radius)",
+                      color: "var(--ink-3)", display: "flex", alignItems: "center",
+                      transition: "color 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                    </svg>
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, color: "var(--ink-3)" }}>Delete?</span>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      style={{
+                        fontSize: 11, padding: "2px 8px", borderRadius: 999,
+                        border: "none", background: "var(--accent)",
+                        color: "white", cursor: "pointer", fontFamily: "var(--font-sans)",
+                        opacity: deleting ? 0.6 : 1,
+                      }}
+                    >
+                      {deleting ? "…" : "Yes"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      style={{
+                        fontSize: 11, padding: "2px 8px", borderRadius: 999,
+                        border: "1px solid var(--rule)", background: "transparent",
+                        color: "var(--ink-3)", cursor: "pointer", fontFamily: "var(--font-sans)",
+                      }}
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -139,27 +200,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
         {post.content}
       </p>
 
-      {/* Media */}
-      {post.mediaFiles.length > 0 && (
-        <div style={{
-          paddingLeft: 48, marginBottom: 14,
-          display: "grid",
-          gridTemplateColumns: post.mediaFiles.length === 1 ? "1fr" : "1fr 1fr",
-          gap: 4, borderRadius: "var(--radius-lg)", overflow: "hidden",
-        }}>
-          {post.mediaFiles.map((f) => (
-            <div key={f.id} style={{
-              aspectRatio: post.mediaFiles.length === 1 ? "16/9" : "1",
-              background: "var(--rule-2)", overflow: "hidden",
-            }}>
-              {f.mimeType.startsWith("video")
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <video src={f.storageKey} style={{ width: "100%", height: "100%", objectFit: "cover" }} controls />
-                : <img src={f.storageKey} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-            </div>
-          ))}
-        </div>
-      )}
+      <PostMedia files={post.mediaFiles} />
 
       {/* Actions */}
       <div style={{ paddingLeft: 48, display: "flex", alignItems: "center", gap: 20 }}>
@@ -211,17 +252,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
                 const ci = c.user.displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
                 return (
                   <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                      background: "var(--rule-2)", border: "1px solid var(--rule)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 10, fontWeight: 500, color: "var(--ink-2)", overflow: "hidden",
-                    }}>
-                      {c.user.avatarUrl
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={c.user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : ci}
-                    </div>
+                    <Avatar src={c.user.avatarUrl} alt={c.user.displayName} size={26} initials={ci} />
                     <div style={{
                       background: "var(--rule-2)", borderRadius: "0 12px 12px 12px",
                       padding: "7px 11px", flex: 1,
