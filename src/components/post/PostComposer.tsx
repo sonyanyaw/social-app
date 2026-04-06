@@ -1,14 +1,17 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import type { Post, User, MediaFile } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { MediaUpload } from "@/components/ui/MediaUpload"
+import { Avatar } from "../Avatar"
 
 type UploadedFile = { key: string; publicUrl: string; name: string; size: number }
+type PostWithRelations = Post & { user: User; mediaFiles: MediaFile[] }
 type Visibility = "PUBLIC" | "FOLLOWERS" | "PRIVATE"
 
-export function PostComposer() {
+export function PostComposer({ onPost }: { onPost?: (post: PostWithRelations) => void } = {}) {
   const { user } = useUser()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -17,6 +20,7 @@ export function PostComposer() {
   const [visibility, setVisibility] = useState<Visibility>("PUBLIC")
   const [error, setError] = useState<string | null>(null)
   const [focused, setFocused] = useState(false)
+  const [mediaKey, setMediaKey] = useState(0) // increment to force MediaUpload remount
 
   const charLimit = 500
   const remaining = charLimit - content.length
@@ -40,40 +44,48 @@ export function PostComposer() {
           }),
         })
         if (!res.ok) { setError(await res.text()); return }
-        setContent(""); setMedia([]); setVisibility("PUBLIC")
-        router.refresh()
+        const post = await res.json() as PostWithRelations
+        setContent("")
+        setMedia([])
+        setVisibility("PUBLIC")
+        setFocused(false)
+        setMediaKey((k) => k + 1) // force MediaUpload to remount and clear its internal state
+        if (onPost) onPost(post)
+        else router.refresh()
       } catch { setError("Something went wrong.") }
     })
   }
 
   return (
-    <div style={{
-      background: "var(--paper-2)",
-      border: `1px solid ${focused ? "#c0bbb5" : "var(--rule)"}`,
-      borderRadius: "var(--radius-lg)",
-      padding: 16,
-      transition: "border-color 0.15s",
-    }}>
+    <div
+      data-composer="true"
+      style={{
+        background: "var(--paper-2)",
+        border: `1px solid ${focused ? "#c0bbb5" : "var(--rule)"}`,
+        borderRadius: "var(--radius-lg)",
+        padding: 16,
+        transition: "border-color 0.15s",
+      }}>
+      {/* onMouseDown on inner elements prevents textarea blur when clicking within composer */}
       <div style={{ display: "flex", gap: 12 }}>
         {/* Avatar */}
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-          background: "var(--accent-soft)", border: "1px solid var(--rule)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 12, fontWeight: 500, color: "var(--accent)",
-        }}>
-          {user?.imageUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={user.imageUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-            : initials}
-        </div>
+        <Avatar src={user?.imageUrl} alt={user?.fullName ?? ""} size={36} initials={initials} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={(e) => {
+              // Delay so clicks inside composer (visibility, file input) register first
+              setTimeout(() => {
+                const active = document.activeElement
+                const composer = document.querySelector("[data-composer]")
+                if (!composer?.contains(active)) {
+                  if (!content.trim() && media.length === 0) setFocused(false)
+                }
+              }, 150)
+            }}
             placeholder="What's on your mind?"
             maxLength={charLimit}
             rows={focused || content ? 3 : 1}
@@ -87,10 +99,10 @@ export function PostComposer() {
         </div>
       </div>
 
-      {/* Media */}
+      {/* Media — show once focused, keep visible until post is submitted */}
       {(focused || content.length > 0 || media.length > 0) && (
         <div style={{ marginTop: 12 }}>
-          <MediaUpload onUpload={setMedia} maxFiles={4} maxSizeMB={10} />
+          <MediaUpload key={mediaKey} onUpload={setMedia} maxFiles={4} maxSizeMB={10} />
         </div>
       )}
 
