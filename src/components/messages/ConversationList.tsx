@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
+import { Avatar } from "@/components/Avatar"
 import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
 import type { Conversation, ConversationParticipant, User, Message } from "@prisma/client"
@@ -124,17 +125,7 @@ export function ConversationList({ initialConversations = [], currentUserId, act
             }}
           >
             <div style={{ position: "relative" }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                background: "var(--accent-soft)", border: "1px solid var(--rule)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 500, color: "var(--accent)",
-              }}>
-                {other?.avatarUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={other.avatarUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-                  : initials}
-              </div>
+              <Avatar src={other?.avatarUrl} alt={other?.displayName ?? ""} size={40} initials={initials} />
               {isUnread && (
                 <div style={{
                   position: "absolute", top: 0, right: 0,

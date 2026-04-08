@@ -2,6 +2,7 @@
 
 import type { User } from "@prisma/client"
 import type { ChatMessage } from "@/hooks/useWebSocket"
+import { Avatar } from "../Avatar"
 
 type Props = {
   message: ChatMessage
@@ -41,18 +42,7 @@ export function MessageBubble({
 
       {/* Avatar — only rendered when it should show, takes no space otherwise */}
       {!isMine && showAvatar && (
-        <div style={{
-          width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-          background: "var(--accent-soft)", border: "1px solid var(--rule)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 10, fontWeight: 500, color: "var(--accent)",
-          overflow: "hidden",
-        }}>
-          {otherUser?.avatarUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={otherUser.avatarUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-            : initials}
-        </div>
+        <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={28} initials={initials} />
       )}
 
       <div style={{

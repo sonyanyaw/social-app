@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
+import Link from "next/link"
 import { notFound } from "next/navigation"
+import { Avatar } from "@/components/Avatar"
 import { db } from "@/lib/db"
 import { Header } from "@/components/Header"
 import { PostCard } from "@/components/post/PostCard"
@@ -66,17 +68,7 @@ export default async function ProfilePage({
             borderBottom: "1px solid var(--rule)",
           }}>
             {/* Avatar */}
-            <div style={{
-              width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
-              background: "var(--accent-soft)", border: "1px solid var(--rule)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22, fontWeight: 500, color: "var(--accent)", overflow: "hidden",
-            }}>
-              {target.avatarUrl
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={target.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : initials}
-            </div>
+            <Avatar src={target.avatarUrl} alt={target.displayName} size={72} initials={initials} />
 
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -96,7 +88,7 @@ export default async function ProfilePage({
                   />
                 )}
                 {isMe && (
-                  <a href="/profile/edit" style={{
+                  <Link href="/profile/edit" style={{
                     fontSize: 13, padding: "7px 16px",
                     borderRadius: 999, border: "1px solid var(--rule)",
                     color: "var(--ink-2)", textDecoration: "none",
@@ -104,7 +96,7 @@ export default async function ProfilePage({
                     transition: "border-color 0.15s",
                   }}>
                     Edit profile
-                  </a>
+                  </Link>
                 )}
               </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useWebSocket, type ChatMessage } from "@/hooks/useWebSocket"
 import { MessageBubble } from "@/components/messages/MessageBubble"
 import type { Message, User } from "@prisma/client"
+import { Avatar } from "../Avatar"
 
 type MessageWithSender = Message & { sender: User }
 
@@ -94,6 +95,7 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
     if (userId === currentUser.id) return
     setTypingUsers((prev) => {
       const next = new Set(prev)
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       isTyping ? next.add(userId) : next.delete(userId)
       return next
     })
@@ -173,17 +175,7 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
         display: "flex", alignItems: "center", gap: 12,
         flexShrink: 0, background: "var(--paper)",
       }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: "50%",
-          background: "var(--accent-soft)", border: "1px solid var(--rule)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 12, fontWeight: 500, color: "var(--accent)", flexShrink: 0,
-        }}>
-          {otherUser?.avatarUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={otherUser.avatarUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-            : otherInitials}
-        </div>
+        <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={34} initials={otherInitials} />
         <div>
           <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", margin: 0 }}>
             {otherUser?.displayName ?? "Unknown"}
