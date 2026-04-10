@@ -24,10 +24,11 @@ model User {
   sentMessages   Message[]
   followers      Follow[]  @relation("following")
   following      Follow[]  @relation("follower")
-  conversations  ConversationParticipant[]
+  conversations      ConversationParticipant[]
+  notifications      Notification[] @relation("UserNotifications")
+  actedNotifications Notification[] @relation("ActorNotifications")
 
   @@index([username])
-  @@index([displayName])
   @@index([clerkId])
 }
 
@@ -58,6 +59,8 @@ model Post {
   comments     Comment[]
   likes        Like[]
   mediaFiles   MediaFile[]
+
+  notifications  Notification[]
 
   @@index([userId])
   @@index([createdAt(sort: Desc)])
@@ -90,6 +93,8 @@ model Comment {
 
   post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  notifications Notification[]
 
   @@index([postId])
   @@index([userId])
@@ -143,4 +148,30 @@ model Message {
 
   @@index([conversationId, sentAt(sort: Desc)])
   @@index([senderId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  actorId   String
+  type      NotificationType
+  postId    String?
+  commentId String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user    User     @relation("UserNotifications", fields: [userId],   references: [id], onDelete: Cascade)
+  actor   User     @relation("ActorNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  post    Post?    @relation(fields: [postId],    references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  MESSAGE
 }

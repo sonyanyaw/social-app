@@ -2,8 +2,8 @@ import { auth } from "@clerk/nextjs/server"
 import { db } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { createNotification } from "@/lib/notifications"
 
-// GET /api/posts/[id]/comments
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +19,6 @@ export async function GET(
   return NextResponse.json(comments)
 }
 
-// POST /api/posts/[id]/comments
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -33,6 +32,9 @@ export async function POST(
   const dbUser = await db.user.findUnique({ where: { clerkId } })
   if (!dbUser) return new NextResponse("User not found", { status: 404 })
 
+  const post = await db.post.findUnique({ where: { id: postId } })
+  if (!post) return new NextResponse("Post not found", { status: 404 })
+
   const [comment] = await db.$transaction([
     db.comment.create({
       data: { postId, userId: dbUser.id, content },
@@ -40,6 +42,15 @@ export async function POST(
     }),
     db.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } }),
   ])
+
+  // Notify post author
+  await createNotification({
+    userId:    post.userId,
+    actorId:   dbUser.id,
+    type:      "COMMENT",
+    postId,
+    commentId: comment.id,
+  })
 
   return NextResponse.json(comment, { status: 201 })
 }
