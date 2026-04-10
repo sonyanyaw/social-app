@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import { Header } from "@/components/Header"
 import { PostCard } from "@/components/post/PostCard"
 import { FollowButton } from "@/components/profile/FollowButton"
+import { ProfileStats } from "@/components/profile/ProfileStats"
 
 export default async function ProfilePage({
   params,
@@ -106,19 +107,12 @@ export default async function ProfilePage({
                 </p>
               )}
 
-              {/* Stats */}
-              <div style={{ display: "flex", gap: 20, marginTop: 14 }}>
-                {[
-                  { label: "posts",     value: target._count.posts },
-                  { label: "followers", value: target._count.followers },
-                  { label: "following", value: target._count.following },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <span style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)" }}>{value}</span>
-                    <span style={{ fontSize: 13, color: "var(--ink-3)", marginLeft: 4 }}>{label}</span>
-                  </div>
-                ))}
-              </div>
+              <ProfileStats
+                username={target.username}
+                postCount={target._count.posts}
+                followerCount={target._count.followers}
+                followingCount={target._count.following}
+              />
             </div>
           </div>
 
