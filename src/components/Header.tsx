@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { UserButton } from "@clerk/nextjs"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { UserSearch } from "@/components/UserSearch"
@@ -9,12 +9,13 @@ import { NotificationBell } from "@/components/NotificationBell"
 
 export function Header() {
   const path = usePathname()
+  const { user } = useUser()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navLinks = [
     { href: "/feed",     label: "Feed"     },
     { href: "/messages", label: "Messages" },
-    { href: "/profile",  label: "Profile"  },
+    { href: user?.username ? `/profile/${user.username}` : "/profile",  label: "Profile"  },
   ]
 
   return (
