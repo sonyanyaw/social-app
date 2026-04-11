@@ -23,10 +23,9 @@ type Props = {
   latestData: FeedPage
   followingData: FeedPage
   hasFollowing: boolean
-  currentUserId: string | null
 }
 
-export function FeedClient({ latestData, followingData, hasFollowing, currentUserId }: Props) {
+export function FeedClient({ latestData, followingData, hasFollowing }: Props) {
   const [tab, setTab] = useState<Tab>("latest")
 
   const latest   = useInfiniteFeed(latestData,   "latest")
@@ -90,6 +89,8 @@ export function FeedClient({ latestData, followingData, hasFollowing, currentUse
   }, [latest, following])
 
   const posts = active.posts
+  const isLoading = active.loading
+  const hasMore = active.hasMore
 
   return (
     <>
@@ -218,7 +219,7 @@ export function FeedClient({ latestData, followingData, hasFollowing, currentUse
 
           <div ref={active.sentinelRef} style={{ height: 1 }} />
 
-          {active.loading && (
+          {isLoading && (
             <div style={{ display: "flex", justifyContent: "center", padding: "24px 0", gap: 6 }}>
               {[0, 1, 2].map((i) => (
                 <div key={i} style={{
@@ -232,7 +233,7 @@ export function FeedClient({ latestData, followingData, hasFollowing, currentUse
             </div>
           )}
 
-          {!active.hasMore && posts.length > 0 && (
+          {!hasMore && posts.length > 0 && (
             <div style={{ textAlign: "center", padding: "32px 0", color: "var(--ink-3)", fontSize: 13 }}>
               You&apos;re all caught up
             </div>

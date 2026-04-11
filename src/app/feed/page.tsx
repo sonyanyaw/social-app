@@ -77,7 +77,6 @@ export default async function FeedPage() {
             latestData={paginate(latestPostsRaw)}
             followingData={paginate(followingPostsRaw)}
             hasFollowing={(dbUser?._count?.following ?? 0) > 0}
-            currentUserId={dbUser?.id ?? null}
           />
         </main>
       </div>
