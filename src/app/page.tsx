@@ -32,6 +32,7 @@ export default async function HomePage() {
           color: var(--ink);
           -webkit-font-smoothing: antialiased;
           min-height: 100dvh;
+          overflow: auto;
         }
 
         @keyframes fadeUp {
