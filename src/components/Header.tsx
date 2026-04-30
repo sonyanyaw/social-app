@@ -1,5 +1,6 @@
 "use client"
 
+import { ThemeToggle } from "@/components/ThemeToggle"
 import Link from "next/link"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
@@ -21,7 +22,7 @@ export function Header() {
   return (
     <header style={{
       position: "sticky", top: 0, zIndex: 50,
-      background: "rgba(250,248,245,0.92)",
+      background: "rgba(var(--paper-2-rgb), 0.92)",
       backdropFilter: "blur(12px)",
       borderBottom: "1px solid var(--rule)",
     }}>
@@ -60,6 +61,7 @@ export function Header() {
             </Link>
           ))}
           <div style={{ width: 1, height: 20, background: "var(--rule)", margin: "0 6px" }} />
+          <ThemeToggle />
           <NotificationBell />
           <div style={{ width: 8 }} />
           <UserButton appearance={{ elements: { avatarBox: { width: 30, height: 30 } } }} />
@@ -67,6 +69,7 @@ export function Header() {
 
         {/* Mobile right — controlled by .h-mobile-right in globals.css */}
         <div className="h-mobile-right">
+          <ThemeToggle />
           <NotificationBell />
           <UserButton appearance={{ elements: { avatarBox: { width: 30, height: 30 } } }} />
           <button
