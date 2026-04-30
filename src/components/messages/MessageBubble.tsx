@@ -1,6 +1,7 @@
 "use client"
 
 import type { User } from "@prisma/client"
+import Link from "next/link"
 import type { ChatMessage } from "@/hooks/useWebSocket"
 import { Avatar } from "../Avatar"
 
@@ -42,7 +43,9 @@ export function MessageBubble({
 
       {/* Avatar — only rendered when it should show, takes no space otherwise */}
       {!isMine && showAvatar && (
-        <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={28} initials={initials} />
+        <Link href={`/profile/${otherUser?.username}`} style={{ display: "contents" }}>
+          <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={28} initials={initials} />
+        </Link>
       )}
 
       <div style={{

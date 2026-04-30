@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import Link from "next/link"
 import { useWebSocket, type ChatMessage } from "@/hooks/useWebSocket"
 import { MessageBubble } from "@/components/messages/MessageBubble"
 import type { Message, User } from "@prisma/client"
@@ -175,26 +176,28 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
         display: "flex", alignItems: "center", gap: 12,
         flexShrink: 0, background: "var(--paper)",
       }}>
-        <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={34} initials={otherInitials} />
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", margin: 0 }}>
-            {otherUser?.displayName ?? "Unknown"}
-          </p>
-          <p style={{ fontSize: 12, color: "var(--ink-3)", margin: 0 }}>
-            @{otherUser?.username}
-            {connected && (
-              <span style={{ marginLeft: 6, color: "var(--accent)", fontSize: 11 }}>● online</span>
-            )}
-          </p>
-        </div>
+        <Link href={`/profile/${otherUser?.username}`} style={{ display: "contents" }}>
+          <Avatar src={otherUser?.avatarUrl} alt={otherUser?.displayName ?? ""} size={34} initials={otherInitials} />
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", margin: 0 }}>
+              {otherUser?.displayName ?? "Unknown"}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--ink-3)", margin: 0 }}>
+              @{otherUser?.username}
+              {connected && (
+                <span style={{ marginLeft: 6, color: "var(--accent)", fontSize: 11 }}>● online</span>
+              )}
+            </p>
+          </div>
+        </Link>
       </div>
 
       {/* Messages */}
       <div style={{
         flex: 1, overflowY: "auto", overflowX: "hidden", padding: "20px",
         display: "flex", flexDirection: "column", gap: 2,
-        minHeight: 0,   /* critical — lets flex children shrink below content size */
-        WebkitOverflowScrolling: "touch", /* smooth momentum scroll on iOS */
+        minHeight: 0,  
+        WebkitOverflowScrolling: "touch", 
       }}>
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, margin: "auto" }}>
@@ -248,7 +251,7 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
         flexShrink: 0, background: "var(--paper)",   /* never compress */
       }}>
         <div style={{
-          display: "flex", gap: 10, alignItems: "flex-end",
+          display: "flex", gap: 10, alignItems: "center",
           background: "var(--paper-2)", border: "1px solid var(--rule)",
           borderRadius: 24, padding: "8px 8px 8px 16px",
         }}>
