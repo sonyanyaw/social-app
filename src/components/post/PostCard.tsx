@@ -21,11 +21,16 @@ type Comment = {
 }
 
 function timeAgo(date: Date | string) {
-  const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  const time = typeof date === "string" ? Date.parse(date) : date.getTime()
+  const s = Math.floor((Date.now() - time) / 1000)
+
+  if (s < 0) return "just now"
   if (s < 60) return `${s}s`
   if (s < 3600) return `${Math.floor(s / 60)}m`
   if (s < 86400) return `${Math.floor(s / 3600)}h`
-  return `${Math.floor(s / 86400)}d`
+  if (s < 2592000) return `${Math.floor(s / 86400)}d`
+  if (s < 31536000) return `${Math.floor(s / 2592000)}mo`
+  return `${Math.floor(s / 31536000)}y`
 }
 
 export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete?: (id: string) => void }) {
@@ -133,9 +138,6 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
             <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
               <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{post.user.displayName}</span>
             </Link>
-            <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
-              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>@{post.user.username}</span>
-            </Link>
             <span suppressHydrationWarning style={{ fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>
               {timeAgo(post.createdAt)}
             </span>
@@ -188,6 +190,9 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
               </div>
             )}
           </div>
+          <Link href={`/profile/${post.user.username}`} style={{ textDecoration: "none" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>@{post.user.username}</span>
+          </Link>
         </div>
       </div>
 
