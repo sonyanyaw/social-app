@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useRef, useCallback } from "react"
+import { useWebSocketConnection } from "@/hooks/useWebSocketConnection"
 
 export type WSMessage =
   | { type: "connected"; userId: string }
@@ -31,64 +31,29 @@ type Options = {
 export function useWebSocket({
   conversationId, onMessage, onTyping, onRead, onConnected
 }: Options) {
-  const { getToken } = useAuth()
-  const wsRef        = useRef<WebSocket | null>(null)
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const typingRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const connectRef   = useRef<() => void>(() => {})
+  const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const connect = useCallback(async () => {
-    const token = await getToken()
-    if (!token) return
+  const handleMessage = useCallback((data: unknown) => {
+    const msg = data as WSMessage
+    if (msg.type === "connected") onConnected?.()
+    if (msg.type === "message")   onMessage(msg.message)
+    if (msg.type === "typing")    onTyping(msg.userId, msg.isTyping)
+    if (msg.type === "read")      onRead(msg.messageId, msg.userId)
+  }, [onConnected, onMessage, onTyping, onRead])
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws"
-    const ws = new WebSocket(
-      `${protocol}://${window.location.host}/api/ws?token=${token}&conversationId=${conversationId}`
-    )
-    wsRef.current = ws
-
-    ws.onmessage = (e) => {
-      try {
-        const data: WSMessage = JSON.parse(e.data)
-        if (data.type === "connected") onConnected?.()
-        if (data.type === "message")   onMessage(data.message)
-        if (data.type === "typing")    onTyping(data.userId, data.isTyping)
-        if (data.type === "read")      onRead(data.messageId, data.userId)
-      } catch {}
-    }
-
-    ws.onclose = () => {
-      reconnectRef.current = setTimeout(() => connectRef.current(), 3000)
-    }
-
-    ws.onerror = () => ws.close()
-  }, [conversationId, getToken, onMessage, onTyping, onRead, onConnected])
-
-  useEffect(() => { connectRef.current = connect }, [connect])
-
-  useEffect(() => {
-    connect()
-    return () => {
-      if (reconnectRef.current) clearTimeout(reconnectRef.current)
-      if (typingRef.current)    clearTimeout(typingRef.current)
-      wsRef.current?.close()
-    }
-  }, [connect])
+  const { send } = useWebSocketConnection({ conversationId, onMessage: handleMessage })
 
   const sendMessage = useCallback((content: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN)
-      wsRef.current.send(JSON.stringify({ type: "message", conversationId, content }))
-  }, [conversationId])
+    send({ type: "message", conversationId, content })
+  }, [send, conversationId])
 
   const sendTypingRaw = useCallback((isTyping: boolean) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN)
-      wsRef.current.send(JSON.stringify({ type: "typing", conversationId, isTyping }))
-  }, [conversationId])
+    send({ type: "typing", conversationId, isTyping })
+  }, [send, conversationId])
 
   const sendRead = useCallback((messageId: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN)
-      wsRef.current.send(JSON.stringify({ type: "read", conversationId, messageId }))
-  }, [conversationId])
+    send({ type: "read", conversationId, messageId })
+  }, [send, conversationId])
 
   const sendTyping = useCallback(() => {
     sendTypingRaw(true)

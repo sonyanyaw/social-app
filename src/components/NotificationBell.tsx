@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import { Avatar } from "@/components/Avatar"
+import { useWebSocketConnection } from "@/hooks/useWebSocketConnection"
 
 type NotifType = "LIKE" | "COMMENT" | "FOLLOW" | "MESSAGE"
 
@@ -83,7 +83,6 @@ function timeAgo(dateStr: string) {
 }
 
 export function NotificationBell() {
-  const { getToken } = useAuth()
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -99,45 +98,26 @@ export function NotificationBell() {
   useEffect(() => {
     fetch("/api/notifications")
       .then((r) => {
-        if (!r.ok) return [] // migration not run yet or other error — fail silently
+        if (!r.ok) return []
         return r.json()
       })
       .then((data: Notification[]) => {
         if (Array.isArray(data)) data.forEach((n) => addNotif(n))
       })
-      .catch(() => {}) // never throw outside this component
+      .catch(() => {})
   }, [addNotif])
 
-  // Real-time via WS
-  useEffect(() => {
-    let ws: WebSocket | null = null
-    let reconnect: ReturnType<typeof setTimeout> | null = null
-    let cancelled = false
+  const handleMessage = useCallback((data: unknown) => {
+    const msg = data as { type: string; notification: Notification & { postId?: string | null } }
+    if (msg.type === "notification")
+      addNotif({ ...msg.notification, postId: msg.notification.postId ?? null })
+  }, [addNotif])
 
-    async function connect() {
-      const token = await getToken()
-      if (!token || cancelled) return
-      const protocol = window.location.protocol === "https:" ? "wss" : "ws"
-      ws = new WebSocket(
-        `${protocol}://${window.location.host}/api/ws?token=${token}&conversationId=__notifications__`
-      )
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data)
-          if (data.type === "notification") addNotif({ ...data.notification, postId: data.notification.postId ?? null })
-        } catch {}
-      }
-      ws.onclose = () => { if (!cancelled) reconnect = setTimeout(connect, 4000) }
-      ws.onerror = () => ws?.close()
-    }
-
-    connect()
-    return () => {
-      cancelled = true
-      if (reconnect) clearTimeout(reconnect)
-      ws?.close()
-    }
-  }, [getToken, addNotif])
+  useWebSocketConnection({
+    conversationId: "__notifications__",
+    onMessage: handleMessage,
+    reconnectDelay: 4000,
+  })
 
   // Close on outside click
   useEffect(() => {

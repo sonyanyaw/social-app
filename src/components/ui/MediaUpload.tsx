@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { uploadFile } from "@/hooks/useUpload"
 
 type UploadedFile = {
@@ -29,6 +29,13 @@ export function MediaUpload({
   const [uploading, setUploading] = useState<string[]>([])
   const [errors, setErrors] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Revoke object URLs and reset file input on unmount (when composer resets)
+  useEffect(() => {
+    return () => {
+      if (inputRef.current) inputRef.current.value = ""
+    }
+  }, [])
 
   const processFiles = useCallback(
     async (raw: FileList | File[]) => {

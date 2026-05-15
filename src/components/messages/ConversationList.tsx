@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Avatar } from "@/components/Avatar"
 import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
@@ -31,7 +31,6 @@ function formatAbsoluteTime(date: Date | string) {
 export function ConversationList({ initialConversations = [], currentUserId, activeId }: Props) {
   const { getToken } = useAuth()
   const [conversations, setConversations] = useState(initialConversations)
-  const connectingRef = useRef(false)
 
   // Open one WS per conversation to receive last-message updates in real time
   useEffect(() => {
@@ -40,10 +39,7 @@ export function ConversationList({ initialConversations = [], currentUserId, act
     const sockets: WebSocket[] = []
 
     async function connectAll() {
-      if (connectingRef.current) return
-      connectingRef.current = true
       const token = await getToken()
-      connectingRef.current = false
       if (!token || cancelled) return
 
       const protocol = window.location.protocol === "https:" ? "wss" : "ws"
@@ -57,33 +53,34 @@ export function ConversationList({ initialConversations = [], currentUserId, act
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data)
-            if (data.type === "message") {
-              setConversations((prev) =>
-                prev
-                  .map((c) =>
-                    c.id === data.conversationId
-                      ? {
-                          ...c,
-                          messages: [{
-                            id:             data.message.id,
-                            conversationId: data.conversationId,
-                            senderId:       data.message.senderId,
-                            content:        data.message.content,
-                            isRead:         data.message.isRead,
-                            sentAt:         new Date(data.message.sentAt),
-                          } as Message],
-                        }
-                      : c
-                  )
-                  .sort((a, b) => {
-                    const aTime = a.messages[0] ? new Date(a.messages[0].sentAt).getTime() : new Date(a.createdAt).getTime()
-                    const bTime = b.messages[0] ? new Date(b.messages[0].sentAt).getTime() : new Date(b.createdAt).getTime()
-                    return bTime - aTime
-                  })
-              )
-            }
+            if (data.type !== "message") return
+            setConversations((prev) =>
+              prev
+                .map((c) =>
+                  c.id === data.conversationId
+                    ? {
+                        ...c,
+                        messages: [{
+                          id:             data.message.id,
+                          conversationId: data.conversationId,
+                          senderId:       data.message.senderId,
+                          content:        data.message.content,
+                          isRead:         data.message.isRead,
+                          sentAt:         new Date(data.message.sentAt),
+                        } as Message],
+                      }
+                    : c
+                )
+                .sort((a, b) => {
+                  const aTime = a.messages[0] ? new Date(a.messages[0].sentAt).getTime() : new Date(a.createdAt).getTime()
+                  const bTime = b.messages[0] ? new Date(b.messages[0].sentAt).getTime() : new Date(b.createdAt).getTime()
+                  return bTime - aTime
+                })
+            )
           } catch {}
         }
+
+        ws.onerror = () => ws.close()
       })
     }
 

@@ -1,8 +1,8 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import Link from "next/link"
+import { useWebSocketConnection } from "@/hooks/useWebSocketConnection"
 
 type MessageToast = {
   id: string
@@ -30,10 +30,6 @@ export const useToast = () => useContext(ToastContext)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
-  const { getToken } = useAuth()
-  const wsRef        = useRef<WebSocket | null>(null)
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const connectingRef = useRef(false)
 
   const addToast = useCallback((t: Omit<MessageToast, "id" | "kind">) => {
     const id = `toast-${Date.now()}-${Math.random()}`
@@ -51,61 +47,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((x) => x.id !== id))
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function connect() {
-      if (
-        connectingRef.current ||
-        wsRef.current?.readyState === WebSocket.OPEN ||
-        wsRef.current?.readyState === WebSocket.CONNECTING
-      ) return
-
-      connectingRef.current = true
-      const token = await getToken()
-      connectingRef.current = false
-
-      if (!token || cancelled) return
-
-      const protocol = window.location.protocol === "https:" ? "wss" : "ws"
-      const ws = new WebSocket(
-        `${protocol}://${window.location.host}/api/ws?token=${token}&conversationId=__notifications__`
-      )
-      wsRef.current = ws
-
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data)
-          if (data.type === "notification") {
-            const isInConversation = window.location.pathname.includes(
-              data.notification.conversationId
-            )
-            if (!isInConversation) addToast(data.notification)
-          }
-        } catch {}
-      }
-
-      ws.onclose = () => {
-        wsRef.current = null
-        if (!cancelled) {
-          reconnectRef.current = setTimeout(connect, 4000)
-        }
-      }
-
-      ws.onerror = () => ws.close()
+  const handleMessage = useCallback((data: unknown) => {
+    const msg = data as { type: string; notification: Omit<MessageToast, "id" | "kind"> & { conversationId: string } }
+    if (msg.type === "notification") {
+      const isInConversation = window.location.pathname.includes(msg.notification.conversationId)
+      if (!isInConversation) addToast(msg.notification)
     }
+  }, [addToast])
 
-    connect()
-
-    return () => {
-      cancelled = true
-      if (reconnectRef.current) clearTimeout(reconnectRef.current)
-
-      wsRef.current?.close()
-      wsRef.current = null
-    }
-
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useWebSocketConnection({
+    conversationId: "__notifications__",
+    onMessage: handleMessage,
+    reconnectDelay: 4000,
+  })
 
   return (
     <ToastContext.Provider value={{ addToast, addErrorToast }}>
