@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { Avatar } from "@/components/Avatar"
 import { PostMedia } from "@/components/PostMedia"
+import { useToast } from "@/components/ToastProvider"
 import type { Post, User, MediaFile } from "@prisma/client"
 
 type PostWithRelations = Post & {
@@ -35,6 +36,7 @@ function timeAgo(date: Date | string) {
 
 export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete?: (id: string) => void }) {
   const { user } = useUser()
+  const { addErrorToast } = useToast()
   const isOwner = user?.id !== undefined && post.user.clerkId === user.id
   const [deleted, setDeleted] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -79,7 +81,9 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
       const res = await fetch(`/api/posts/${post.id}/comments`)
       const data = await res.json()
       setComments(data)
-    } catch {}
+    } catch {
+      addErrorToast("Couldn't load comments")
+    }
     finally { setLoadingComments(false) }
   }
 
@@ -107,7 +111,9 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
       setComments((prev) => [...prev, newComment])
       setCommentCount((c) => c + 1)
       setCommentInput("")
-    } catch {}
+    } catch {
+      addErrorToast("Couldn't post comment")
+    }
     finally { setSubmitting(false) }
   }
 
@@ -121,6 +127,7 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
     } catch {
       setDeleting(false)
       setConfirmDelete(false)
+      addErrorToast("Couldn't delete post")
     }
   }
 

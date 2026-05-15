@@ -4,16 +4,28 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 
-type Toast = {
+type MessageToast = {
   id: string
+  kind: "message"
   conversationId: string
   senderName: string
   senderAvatar: string | null
   content: string
 }
 
-type ToastCtx = { addToast: (t: Omit<Toast, "id">) => void }
-const ToastContext = createContext<ToastCtx>({ addToast: () => {} })
+type ErrorToast = {
+  id: string
+  kind: "error"
+  message: string
+}
+
+type Toast = MessageToast | ErrorToast
+
+type ToastCtx = {
+  addToast: (t: Omit<MessageToast, "id" | "kind">) => void
+  addErrorToast: (message: string) => void
+}
+const ToastContext = createContext<ToastCtx>({ addToast: () => {}, addErrorToast: () => {} })
 export const useToast = () => useContext(ToastContext)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -23,10 +35,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const connectingRef = useRef(false)
 
-  const addToast = useCallback((t: Omit<Toast, "id">) => {
+  const addToast = useCallback((t: Omit<MessageToast, "id" | "kind">) => {
     const id = `toast-${Date.now()}-${Math.random()}`
-    setToasts((prev) => [...prev, { ...t, id }])
+    setToasts((prev) => [...prev, { ...t, kind: "message", id }])
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 5000)
+  }, [])
+
+  const addErrorToast = useCallback((message: string) => {
+    const id = `toast-${Date.now()}-${Math.random()}`
+    setToasts((prev) => [...prev, { kind: "error", message, id }])
+    setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 4000)
   }, [])
 
   const dismissToast = useCallback((id: string) => {
@@ -90,22 +108,67 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={{ addToast, addErrorToast }}>
       {children}
       <div style={{
         position: "fixed", bottom: 24, right: 24, zIndex: 1000,
         display: "flex", flexDirection: "column", gap: 10,
         pointerEvents: "none",
       }}>
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
-        ))}
+        {toasts.map((toast) =>
+          toast.kind === "error"
+            ? <ErrorToastItem key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
+            : <ToastItem key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
+        )}
       </div>
     </ToastContext.Provider>
   )
 }
 
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ErrorToastItem({ toast, onDismiss }: { toast: ErrorToast; onDismiss: () => void }) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div style={{
+      pointerEvents: "all", width: 320,
+      background: "var(--paper-2)", border: "1px solid color-mix(in srgb, red 30%, var(--rule))",
+      borderRadius: 14, overflow: "hidden",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+      animation: "slideInUp 0.25s ease both",
+      opacity: visible ? 1 : 0, transition: "opacity 0.2s",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)", flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p style={{ margin: 0, flex: 1, fontSize: 13, color: "var(--ink)" }}>{toast.message}</p>
+        <button
+          onClick={onDismiss}
+          style={{
+            width: 20, height: 20, borderRadius: "50%", border: "none",
+            background: "var(--rule)", cursor: "pointer", flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)",
+          }}
+        >
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <line x1="1" y1="1" x2="7" y2="7"/><line x1="7" y1="1" x2="1" y2="7"/>
+          </svg>
+        </button>
+      </div>
+      <div style={{ height: 2, background: "var(--rule-2)" }}>
+        <div style={{ height: "100%", background: "var(--accent)", animation: "shrink 4s linear forwards" }} />
+      </div>
+    </div>
+  )
+}
+
+function ToastItem({ toast, onDismiss }: { toast: MessageToast; onDismiss: () => void }) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {

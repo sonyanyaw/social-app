@@ -16,12 +16,14 @@ export function useInfiniteFeed(initialData: FeedPage, tab: "latest" | "followin
   const [nextCursor, setNextCursor] = useState<string | null>(initialData.nextCursor)
   const [hasMore, setHasMore] = useState(initialData.hasMore)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set())
   const observerRef = useRef<IntersectionObserver | null>(null)
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore || !nextCursor) return
     setLoading(true)
+    setError(false)
     try {
       const params = new URLSearchParams({ cursor: nextCursor })
       if (tab === "following") params.set("tab", "following")
@@ -30,7 +32,9 @@ export function useInfiniteFeed(initialData: FeedPage, tab: "latest" | "followin
       setPages((prev) => [...prev, ...data.posts])
       setNextCursor(data.nextCursor)
       setHasMore(data.hasMore)
-    } catch {}
+    } catch {
+      setError(true)
+    }
     finally { setLoading(false) }
   }, [loading, hasMore, nextCursor, tab])
 
@@ -76,5 +80,5 @@ export function useInfiniteFeed(initialData: FeedPage, tab: "latest" | "followin
     observerRef.current.observe(node)
   }, [loadMore])
 
-  return { posts: pages, hasMore, loading, prependPost, prependMany, deletePost, sentinelRef, newPostIds }
+  return { posts: pages, hasMore, loading, error, prependPost, prependMany, deletePost, sentinelRef, newPostIds }
 }

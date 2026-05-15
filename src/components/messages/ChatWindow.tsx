@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useWebSocket, type ChatMessage } from "@/hooks/useWebSocket"
 import { MessageBubble } from "@/components/messages/MessageBubble"
+import { useToast } from "@/components/ToastProvider"
 import type { Message, User } from "@prisma/client"
 import { Avatar } from "../Avatar"
 
@@ -37,6 +38,7 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
   const [connected, setConnected] = useState(false)
+  const { addErrorToast } = useToast()
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
   // Keep a ref to sendRead so callbacks can use the latest version
@@ -133,6 +135,10 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
   async function handleSend() {
     const content = input.trim()
     if (!content || sending) return
+    if (!connected) {
+      addErrorToast("Not connected — try again in a moment")
+      return
+    }
     setSending(true)
 
     const tmpId = `tmp-${Date.now()}`

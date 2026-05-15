@@ -91,6 +91,7 @@ export function FeedClient({ latestData, followingData, hasFollowing }: Props) {
   const posts = active.posts
   const isLoading = active.loading
   const hasMore = active.hasMore
+  const loadError = active.error
 
   return (
     <>
@@ -217,7 +218,7 @@ export function FeedClient({ latestData, followingData, hasFollowing }: Props) {
             ))}
           </div>
 
-          <div ref={active.sentinelRef} style={{ height: 1 }} />
+          {!loadError && <div ref={active.sentinelRef} style={{ height: 1 }} />}
 
           {isLoading && (
             <div style={{ display: "flex", justifyContent: "center", padding: "24px 0", gap: 6 }}>
@@ -233,7 +234,13 @@ export function FeedClient({ latestData, followingData, hasFollowing }: Props) {
             </div>
           )}
 
-          {!hasMore && posts.length > 0 && (
+          {loadError && (
+            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--ink-3)", fontSize: 13 }}>
+              Couldn&apos;t load more posts — scroll up or try refreshing.
+            </div>
+          )}
+
+          {!hasMore && !loadError && posts.length > 0 && (
             <div style={{ textAlign: "center", padding: "32px 0", color: "var(--ink-3)", fontSize: 13 }}>
               You&apos;re all caught up
             </div>

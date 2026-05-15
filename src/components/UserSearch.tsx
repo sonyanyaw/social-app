@@ -18,6 +18,7 @@ export function UserSearch() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<UserResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState(false)
   const [open, setOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
   const [startingConvo, startTransition] = useTransition()
@@ -28,18 +29,22 @@ export function UserSearch() {
   const search = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); setLoading(false); return }
     setLoading(true)
+    setSearchError(false)
     try {
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`)
       const data = await res.json()
       setResults(data)
       setOpen(true)
-    } catch {}
+    } catch {
+      setSearchError(true)
+      setOpen(true)
+    }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!query.trim()) { setResults([]); setOpen(false); return }
+    if (!query.trim()) { setResults([]); setSearchError(false); setOpen(false); return }
     debounceRef.current = setTimeout(() => search(query), 220)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, search])
@@ -139,7 +144,13 @@ export function UserSearch() {
           zIndex: 100,
           overflow: "hidden",
         }}>
-          {results.length === 0 && !loading && (
+          {searchError && !loading && (
+            <div style={{ padding: "20px 16px", textAlign: "center", color: "var(--accent)", fontSize: 13 }}>
+              Search failed — try again
+            </div>
+          )}
+
+          {!searchError && results.length === 0 && !loading && (
             <div style={{ padding: "20px 16px", textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>
               No users found for &ldquo;{query}&rdquo;
             </div>
