@@ -2,6 +2,7 @@
 
 import { useState, useRef, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { getInitials } from "@/lib/format"
 
 type User = {
   id: string
@@ -23,8 +24,7 @@ export function ProfileEditForm({ user }: { user: User }) {
   const [saved, setSaved] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const initials = displayName
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+  const initials = getInitials(displayName)
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

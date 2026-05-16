@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { getInitials } from "@/lib/format"
 
 type UserResult = {
   id: string
@@ -157,7 +158,7 @@ export function UserSearch() {
           )}
 
           {results.map((user, i) => {
-            const initials = user.displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+            const initials = getInitials(user.displayName)
             const isActive = i === activeIdx
 
             return (

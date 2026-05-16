@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Avatar } from "@/components/Avatar"
 import { useWebSocketConnection } from "@/hooks/useWebSocketConnection"
+import { timeAgo } from "@/lib/format"
 
 type NotifType = "LIKE" | "COMMENT" | "FOLLOW" | "MESSAGE"
 
@@ -74,13 +75,6 @@ function NotifIcon({ type }: { type: NotifType }) {
   )
 }
 
-function timeAgo(dateStr: string) {
-  const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (s < 60)    return `${s}s`
-  if (s < 3600)  return `${Math.floor(s / 60)}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h`
-  return `${Math.floor(s / 86400)}d`
-}
 
 export function NotificationBell() {
   const [notifs, setNotifs] = useState<Notification[]>([])

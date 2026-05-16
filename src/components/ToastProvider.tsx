@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useWebSocketConnection } from "@/hooks/useWebSocketConnection"
+import { getInitials } from "@/lib/format"
 
 type MessageToast = {
   id: string
@@ -130,8 +131,7 @@ function ToastItem({ toast, onDismiss }: { toast: MessageToast; onDismiss: () =>
     return () => clearTimeout(t)
   }, [])
 
-  const initials = toast.senderName
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+  const initials = getInitials(toast.senderName)
 
   return (
     <>

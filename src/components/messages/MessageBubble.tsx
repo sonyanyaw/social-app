@@ -4,6 +4,7 @@ import type { User } from "@prisma/client"
 import Link from "next/link"
 import type { ChatMessage } from "@/hooks/useWebSocket"
 import { Avatar } from "../Avatar"
+import { getInitials, formatTime } from "@/lib/format"
 
 type Props = {
   message: ChatMessage
@@ -14,18 +15,10 @@ type Props = {
   otherUser: User | null
 }
 
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
 export function MessageBubble({
   message, isMine, isOptimistic, showAvatar, isLastInGroup, otherUser
 }: Props) {
-  const initials = otherUser?.displayName
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "?"
+  const initials = getInitials(otherUser?.displayName)
 
   return (
     <div style={{

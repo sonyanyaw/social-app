@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Avatar } from "@/components/Avatar"
+import { getInitials } from "@/lib/format"
 
 type UserRow = {
   id: string
@@ -141,7 +142,7 @@ export function FollowListModal({ username, type, count, onClose }: Props) {
               </div>
             ) : (
               users.map((u) => {
-                const initials = u.displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+                const initials = getInitials(u.displayName)
                 return (
                   <Link
                     key={u.id}

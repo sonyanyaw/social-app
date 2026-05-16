@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useWebSocket, type ChatMessage } from "@/hooks/useWebSocket"
 import { MessageBubble } from "@/components/messages/MessageBubble"
 import { useToast } from "@/components/ToastProvider"
+import { getInitials } from "@/lib/format"
 import type { Message, User } from "@prisma/client"
 import { Avatar } from "../Avatar"
 
@@ -170,8 +171,7 @@ export function ChatWindow({ conversationId, initialMessages, currentUser, other
     }
   }
 
-  const otherInitials = otherUser?.displayName
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "?"
+  const otherInitials = getInitials(otherUser?.displayName)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", minHeight: 0 }}>

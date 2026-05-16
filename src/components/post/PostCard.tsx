@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs"
 import { Avatar } from "@/components/Avatar"
 import { PostMedia } from "@/components/PostMedia"
 import { useToast } from "@/components/ToastProvider"
+import { getInitials, timeAgo } from "@/lib/format"
 import type { Post, User, MediaFile } from "@prisma/client"
 
 type PostWithRelations = Post & {
@@ -21,18 +22,6 @@ type Comment = {
   user: { id: string; displayName: string; username: string; avatarUrl: string | null }
 }
 
-function timeAgo(date: Date | string) {
-  const time = typeof date === "string" ? Date.parse(date) : date.getTime()
-  const s = Math.floor((Date.now() - time) / 1000)
-
-  if (s < 0) return "just now"
-  if (s < 60) return `${s}s`
-  if (s < 3600) return `${Math.floor(s / 60)}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h`
-  if (s < 2592000) return `${Math.floor(s / 86400)}d`
-  if (s < 31536000) return `${Math.floor(s / 2592000)}mo`
-  return `${Math.floor(s / 31536000)}y`
-}
 
 export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete?: (id: string) => void }) {
   const { user } = useUser()
@@ -52,8 +41,7 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const initials = post.user.displayName
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+  const initials = getInitials(post.user.displayName)
 
   async function toggleLike() {
     // Optimistic update
@@ -261,7 +249,7 @@ export function PostCard({ post, onDelete }: { post: PostWithRelations; onDelete
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
               {comments.map((c) => {
-                const ci = c.user.displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+                const ci = getInitials(c.user.displayName)
                 return (
                   <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                     <Avatar src={c.user.avatarUrl} alt={c.user.displayName} size={26} initials={ci} />

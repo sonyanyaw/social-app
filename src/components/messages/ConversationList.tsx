@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Avatar } from "@/components/Avatar"
 import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
+import { getInitials, formatAbsoluteTime } from "@/lib/format"
 import type { Conversation, ConversationParticipant, User, Message } from "@prisma/client"
 
 type ConversationWithDetails = Conversation & {
@@ -17,16 +18,6 @@ type Props = {
   activeId: string | null
 }
 
-function formatAbsoluteTime(date: Date | string) {
-  const now = new Date()
-  const d = new Date(date)
-  const isToday = d.toDateString() === now.toDateString()
-  if (isToday) return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday"
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-}
 
 export function ConversationList({ initialConversations = [], currentUserId, activeId }: Props) {
   const { getToken } = useAuth()
@@ -106,8 +97,7 @@ export function ConversationList({ initialConversations = [], currentUserId, act
         const lastMsg = conv.messages[0]
         const isActive = conv.id === activeId
         const isUnread = lastMsg && lastMsg.senderId !== currentUserId && !lastMsg.isRead
-        const initials = other?.displayName
-          .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "?"
+        const initials = getInitials(other?.displayName)
 
         return (
           <Link

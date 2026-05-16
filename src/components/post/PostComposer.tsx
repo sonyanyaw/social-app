@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { MediaUpload } from "@/components/ui/MediaUpload"
 import { Avatar } from "../Avatar"
+import { getInitials } from "@/lib/format"
 
 type UploadedFile = { key: string; publicUrl: string; name: string; size: number }
 type PostWithRelations = Post & { user: User; mediaFiles: MediaFile[] }
@@ -26,8 +27,7 @@ export function PostComposer({ onPost }: { onPost?: (post: PostWithRelations) =>
   const remaining = charLimit - content.length
   const canPost = content.trim().length > 0 && remaining >= 0 && !isPending
 
-  const initials = user?.fullName
-    ?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "?"
+  const initials = getInitials(user?.fullName)
 
   async function handleSubmit() {
     if (!canPost) return

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Avatar } from "@/components/Avatar"
 import { db } from "@/lib/db"
+import { getInitials } from "@/lib/format"
 import { Header } from "@/components/Header"
 import { PostCard } from "@/components/post/PostCard"
 import { FollowButton } from "@/components/profile/FollowButton"
@@ -53,8 +54,7 @@ export default async function ProfilePage({
     take: 30,
   })
 
-  const initials = target.displayName
-    .split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+  const initials = getInitials(target.displayName)
 
   return (
     <>
